@@ -1,9 +1,14 @@
-require('../polyfills');
+try {
+  require('../polyfills');
 
 const Module = require('module');
 const { join, dirname } = require('path');
 const electron = require('electron');
 const { BrowserWindow, app, session } = electron;
+
+const isOverlay = process.argv.includes('--overlay-host');
+
+require('fs').writeFileSync(__dirname + '/' + Date.now() + '.txt', isOverlay.toString())
 
 const electronPath = require.resolve('electron');
 const discordPath = join(dirname(require.main.filename), '..', 'app.asar');
@@ -11,6 +16,7 @@ const discordPath = join(dirname(require.main.filename), '..', 'app.asar');
 class PatchedBrowserWindow extends BrowserWindow {
   // noinspection JSAnnotator - Make JetBrains happy
   constructor (opts) {
+    require('fs').writeFileSync(__dirname + '/' + Date.now() + '.txt', JSON.stringify(opts));
     if (opts.webPreferences && opts.webPreferences.preload) {
       global.originalPreload = opts.webPreferences.preload;
       opts.webPreferences.preload = join(__dirname, 'preload.js');
@@ -21,21 +27,24 @@ class PatchedBrowserWindow extends BrowserWindow {
   }
 }
 
-Object.assign(PatchedBrowserWindow, electron.BrowserWindow);
-require.cache[electronPath].exports = {};
+let failedExports;
+if (isOverlay) {
+  Object.assign(PatchedBrowserWindow, electron.BrowserWindow);
+  require.cache[electronPath].exports = {};
 
-const failedExports = [];
-for (const prop in electron) {
-  try {
-    // noinspection JSUnfilteredForInLoop
-    require.cache[electronPath].exports[prop] = electron[prop];
-  } catch (_) {
-    // noinspection JSUnfilteredForInLoop
-    failedExports.push(prop);
+  failedExports = [];
+  for (const prop in electron) {
+    try {
+      // noinspection JSUnfilteredForInLoop
+      require.cache[electronPath].exports[prop] = electron[prop];
+    } catch (_) {
+      // noinspection JSUnfilteredForInLoop
+      failedExports.push(prop);
+    }
   }
+  
+  require.cache[electronPath].exports.BrowserWindow = PatchedBrowserWindow;
 }
-
-require.cache[electronPath].exports.BrowserWindow = PatchedBrowserWindow;
 
 app.once('ready', () => {
   session.defaultSession.webRequest.onHeadersReceived(({ responseHeaders }, done) => {
@@ -46,8 +55,15 @@ app.once('ready', () => {
     done({ responseHeaders });
   });
 
-  for (const prop of failedExports) {
-    require.cache[electronPath].exports[prop] = electron[prop];
+  if (isOverlay) {
+    for (const prop of failedExports) {
+      require.cache[electronPath].exports[prop] = electron[prop];
+    }
+  } else {
+    Object.assign(PatchedBrowserWindow, electron.BrowserWindow);
+    require.cache[electronPath].exports = Object.assign({}, electron, {
+      BrowserWindow: PatchedBrowserWindow
+    });
   }
 });
 
@@ -61,3 +77,6 @@ Module._load(
   null,
   true
 );
+} catch (e) {
+  require('fs').writeFileSync(__dirname + '/err' + Date.now() + '.txt', e.stack);
+}

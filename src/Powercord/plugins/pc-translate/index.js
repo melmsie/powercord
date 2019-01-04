@@ -2,7 +2,7 @@ const Plugin = require('powercord/Plugin');
 const { getModuleByDisplayName, React } = require('powercord/webpack');
 const { sleep, createElement } = require('powercord/util');
 const { ContextMenu: { Submenu } } = require('powercord/components');
-const translate = require('@k3rn31p4nic/google-translate-api');
+const translate = require('google-translate-api');
 const { resolve } = require('path');
 
 module.exports = class Translate extends Plugin {

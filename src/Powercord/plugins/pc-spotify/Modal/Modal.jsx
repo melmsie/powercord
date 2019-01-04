@@ -141,16 +141,14 @@ module.exports = class Modal extends React.Component {
             isPlaying={this.state.isPlaying}
             duration={this.state.currentItem.duration}
             onSeeking={(seeking) => this.setState({
-              seekBar: {
-                ...this.state.seekBar,
+              seekBar: Object.assign({}, this.state.seekBar, {
                 seeking
-              }
+              })
             })}
             onDurationToggle={(show) => this.setState({
-              seekBar: {
-                ...this.state.seekBar,
+              seekBar: Object.assign({}, this.state.seekBar, {
                 showDurations: show
-              }
+              })
             })}
           />
         </div>

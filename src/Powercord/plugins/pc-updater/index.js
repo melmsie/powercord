@@ -48,8 +48,8 @@ module.exports = class Updater extends Plugin {
     }
 
     const branch = await exec('git branch', this.cwd)
-      .then(({ stdout }) =>
-        stdout
+      .then(output =>
+        output
           .toString()
           .split('\n')
           .find(l => l.startsWith('*'))
@@ -58,7 +58,7 @@ module.exports = class Updater extends Plugin {
       );
 
     const localRevision = await exec(`git rev-parse ${branch}`, this.cwd)
-      .then(r => r.stdout.toString().trim());
+      .then(r => r.toString().trim());
 
     const currentRevision = await get(`https://api.github.com/repos/${REPO}/commits`)
       .set('Accept', 'application/vnd.github.v3+json')
